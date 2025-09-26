@@ -1,57 +1,73 @@
-# Projeto de Ingestão de Dados na Nuvem | NYC Taxi para BigQuery
+# Data Pipeline & Machine Learning com Táxis de NYC no Databricks
 
-## Status do Projeto: Fase 1 (Ingestão de Dados) Concluída ✅
+**Status:** Versão Completa
 
 ## Visão Geral do Projeto
 
-Este projeto de engenharia de dados foca na construção do primeiro estágio de um pipeline de dados moderno (ELT): a extração e carga (Extract & Load). O objetivo é ingerir os dados públicos de viagens de táxi de Nova York (NYC TLC) de uma fonte externa e carregá-los em sua forma bruta no Google BigQuery, preparando o terreno para futuras transformações e análises.
+Este projeto demonstra um ciclo de vida completo de dados, desde a engenharia até a ciência de dados. Utilizando a plataforma Databricks, os dados públicos de táxis de NYC são processados através de um pipeline robusto seguindo a **arquitetura Medallion**. Após o tratamento e a agregação dos dados, são realizadas análises de negócio para extrair insights e, por fim, um modelo de Machine Learning é treinado para prever resultados com base nos dados tratados.
 
-## Problema de Negócio
+## A Evolução do Projeto
 
-Para que os dados de viagens de táxi de NY possam ser analisados, eles primeiro precisam ser armazenados de forma centralizada e acessível em um Data Warehouse. Este projeto resolve essa etapa inicial, criando um script robusto que busca os dados na fonte e os deposita em uma tabela no BigQuery, criando uma fonte única da verdade para os dados brutos.
+Este repositório representa uma evolução significativa de uma simples ingestão de dados para uma solução de dados completa:
 
-## Arquitetura da Solução (Fase 1: EL)
+* **Versão 1 (EL no BigQuery):** O foco inicial era apenas na **Extração** e **Carga** (EL) dos dados brutos de uma fonte pública para o Google BigQuery usando um script Python com Pandas.
+* **Versão Atual (ELT + ML no Databricks):** O projeto foi migrado para o **Databricks** e expandido para incluir:
+    * **Processamento Distribuído com PySpark:** Permitindo escalar para grandes volumes de dados.
+    * **Arquitetura Medallion Completa:** Implementação das camadas Bronze, Silver e Gold para garantir qualidade e governança.
+    * **Análise de Dados Avançada:** Geração de insights de negócio com consultas SQL diretamente na plataforma.
+    * **Modelagem Preditiva:** Desenvolvimento e avaliação de modelos de Machine Learning com Scikit-learn para prever a duração das viagens.
 
-A solução atual representa a fase de **Extração e Carga (Extract & Load)** de um processo ELT.
+## Arquitetura Medallion no Databricks
 
-**Fluxo de Dados:**
+O pipeline foi estruturado em três camadas lógicas para garantir um fluxo de dados limpo e organizado:
 
-`Fonte de Dados (URL Parquet)` -> `Script Python (Pandas/Requests)` -> `Google BigQuery (Tabela de Dados Brutos)`
+### Camada Bronze
+* **Tabela:** `taxi_nyc_bronze`
+* **Objetivo:** Ingestão dos dados brutos (raw data) para criar uma fonte única da verdade no nosso Data Lakehouse.
 
-1.  **Extração (Extract):** Um script em Python, utilizando a biblioteca `requests`, baixa o arquivo de dados do mês (formato `.parquet`) diretamente da fonte pública.
-2.  **Carga (Load):** Utilizando a biblioteca `pandas-gbq`, o script carrega o DataFrame completo para uma tabela de destino no **Google BigQuery**. Esta tabela (`dados_brutos`) serve como a camada Bronze (raw data) do nosso Data Warehouse, garantindo que tenhamos uma cópia fiel dos dados originais na nuvem.
+### Camada Silver
+* **Tabela:** `taxi_nyc_silver`
+* **Objetivo:** Limpeza, enriquecimento e normalização dos dados. Nesta etapa:
+    * Os tipos de dados são corrigidos e padronizados.
+    * Dados inconsistentes ou nulos são filtrados.
+    * **Engenharia de Features:** Novas colunas são criadas (`pickup_day_of_week`, `pickup_hour`, `trip_duration_minutes`) para potencializar as análises e o modelo de ML.
 
-## Tecnologias Utilizadas
+### Camada Gold
+* **Tabela:** `taxi_nyc_gold`
+* **Objetivo:** Criação de tabelas agregadas com métricas de negócio, prontas para serem consumidas por dashboards ou pela equipe de ciência de dados.
 
-- **Linguagem:** Python
-- **Bibliotecas Principais:** Pandas, pandas-gbq, Requests
-- **Cloud & Data Warehouse:** Google Cloud Platform (GCP), Google BigQuery
+## Análises e Insights Gerados
+
+Através de consultas SQL na camada Gold, o projeto responde a perguntas de negócio como:
+
+* Qual o volume de corridas e a demanda por hora do dia?
+* Quais os dias da semana que geram maior faturamento?
+* Como o comportamento da demanda se difere entre dias úteis e fins de semana?
+* Quais são os piores horários para dirigir, com base na velocidade média das corridas?
+
+## Machine Learning: Previsão da Duração da Viagem
+
+Para agregar inteligência ao negócio, foi desenvolvido um modelo para prever a duração das viagens (`trip_duration_minutes`).
+
+* **Features Utilizadas:** `pickup_hour`, `pickup_day_of_week`, `trip_distance`, `passenger_count`.
+* **Modelos Avaliados:**
+    1.  **Regressão Linear:** Apresentou performance insatisfatória (**R² de -0.38%**), servindo como baseline.
+    2.  **Random Forest Regressor:** Demonstrou resultados excelentes, com um **R² de 66.39%**, explicando grande parte da variabilidade dos dados e alcançando um erro médio (RMSE) de apenas **9.09 minutos**.
 
 ## Como Executar
 
-1.  **Pré-requisitos:**
-    - Python 3.x instalado.
-    - Autenticação da Google Cloud SDK configurada no seu ambiente (`gcloud auth application-default login`).
-    - Ter um projeto na GCP com o BigQuery API ativado.
-2.  **Clone o Repositório:** `git clone [URL_DO_SEU_REPOSITORIO]`
-3.  **Instale as dependências:**
-    ```bash
-    pip install pandas requests pandas-gbq pyarrow
-    ```
-4.  **Execute o Notebook:**
-    - Abra o notebook `data-pipeline-taxi-nyc-cloud.ipynb`.
-    - Altere as variáveis `project_id` e `tabela_destino_bq` para os valores do seu projeto.
-    - Execute as células para realizar a ingestão dos dados.
+1.  **Ambiente:** Este projeto foi desenvolvido para ser executado em um ambiente Databricks.
+2.  **Importar Notebook:** Faça o upload do notebook `Taxi_nyc_notebook.ipynb` para o seu workspace no Databricks.
+3.  **Cluster:** Anexe o notebook a um cluster Spark em execução.
+4.  **Execução:** Execute as células sequencialmente para criar as camadas Bronze, Silver, Gold, realizar as análises e treinar os modelos de Machine Learning.
 
-## Próximos Passos (Evolução para um Pipeline ELT Completo)
+## Próximos Passos
 
-Com a fase de EL concluída, os próximos passos naturais para este projeto são:
-
-- [ ] **Fase 2 (Transformação):** Utilizar SQL diretamente no BigQuery para criar *views* ou tabelas tratadas (camada Silver) e agregadas (camada Gold) a partir dos dados brutos. Ferramentas como o **dbt** podem ser usadas aqui.
-- [ ] **Fase 3 (Automação):** Migrar o script de ingestão para uma **Cloud Function** e usar o **Cloud Scheduler** para automatizar a execução do pipeline mensalmente, tornando-o totalmente autônomo.
-- [ ] **Fase 4 (Visualização):** Conectar uma ferramenta de BI, como o **Power BI** ou Looker Studio, às tabelas da camada Gold no BigQuery para criar dashboards analíticos.
+* **Automação com Databricks Jobs:** Orquestrar o notebook para rodar de forma agendada (diária, mensal) e automática.
+* **MLOps com MLflow:** Utilizar o MLflow (integrado ao Databricks) para registrar experimentos, versionar o modelo Random Forest e prepará-lo para o deploy.
+* **Visualização:** Conectar o Databricks a uma ferramenta de BI (Power BI, Looker Studio) para criar dashboards interativos a partir da camada Gold.
 
 ## Autor
 
 **Leandro Andrade de Oliveira**
-- **LinkedIn:** [linkedin.com/in/leanttro/](https://www.linkedin.com/in/leanttro/)
+* **LinkedIn:** `https://www.linkedin.com/in/leanttro/`
